@@ -28,4 +28,6 @@ rule. The workflow has no secret.
   machine refused the install, and the guard stayed on. The first run on GitHub is the check
   that `Input`, `onInput` and `onSubmit` exist in that version. If it fails, move the pin to
   2.1.274.
+- 2026-09-17, later: the first run on GitHub passed all gates with 2.1.273 (17 tests), so the
+  pin stays and the README names 2.1.273 as the minimum version.
 - Look at the claude CLI pin again from 2026-09-22, when 2.1.273 is 7 days old.

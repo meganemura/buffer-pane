@@ -1,5 +1,7 @@
 # buffer-pane
 
+[![test](https://github.com/meganemura/buffer-pane/actions/workflows/test.yml/badge.svg)](https://github.com/meganemura/buffer-pane/actions/workflows/test.yml)
+
 A Claude Code plugin (a Claude Mod) that opens a pane beside the transcript
 where you write the next things to tell the agent.
 
@@ -16,17 +18,20 @@ collect that text until you are ready.
 
 ## Requirements
 
-- Claude Code with `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`. Version 2.1.274 is the version
-  that the plugin was tested with.
+- Claude Code 2.1.273 or later with `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`
 - A terminal session. Print mode (`-p`) has no pane.
 
 ## Install
 
-Run the plugin from a checkout:
+```sh
+claude plugin marketplace add meganemura/buffer-pane
+claude plugin install buffer-pane@buffer-pane
+```
+
+To develop against a checkout, run the plugin from its working tree:
 
 ```sh
-git clone <this repository> buffer-pane
-CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude --plugin-dir "$PWD/buffer-pane/plugin"
+CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude --plugin-dir /path/to/buffer-pane/plugin
 ```
 
 To set `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` for each session, add it to the
