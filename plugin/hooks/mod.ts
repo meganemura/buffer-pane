@@ -120,7 +120,7 @@ export function textOfBlocks(blocks: readonly Block[]): string {
 // A mark for a text that is no longer in the buffer is dropped. Without this, a block that
 // the person edits and then edits back shows a mark for a fill of a different text.
 function withSentPruned(buffer: Buffer): Buffer {
-  const texts = new Set(buffer.blocks.map((block) => block.text))
+  const texts = new Set(buffer.blocks.map((block) => block.text.trim()))
   return { ...buffer, sent: buffer.sent.filter((text) => texts.has(text)) }
 }
 
@@ -149,12 +149,16 @@ export function afterRemoveOf(buffer: Buffer, id: number): Buffer {
   return withSentPruned({ ...buffer, blocks: buffer.blocks.filter((block) => block.id !== id) })
 }
 
+// `sent` holds trimmed text, the form the store keeps (`textOfBlocks`). A field holds the text
+// as typed, with a possible space at the end, so each comparison trims first. Without this, a
+// block sent with a space at its end loses its mark on the next load.
 export function afterSentOf(buffer: Buffer, text: string): Buffer {
-  return buffer.sent.includes(text) ? buffer : { ...buffer, sent: [...buffer.sent, text] }
+  const sent = text.trim()
+  return buffer.sent.includes(sent) ? buffer : { ...buffer, sent: [...buffer.sent, sent] }
 }
 
 export function isSentOf(buffer: Buffer, block: Block): boolean {
-  return buffer.sent.includes(block.text)
+  return buffer.sent.includes(block.text.trim())
 }
 
 export function storedOf(buffer: Buffer): Stored {
@@ -204,8 +208,8 @@ function commit(state: State, host: Host, buffer: Buffer): void {
 
 async function send(state: State, host: Host, id: number): Promise<void> {
   const block = state.buffer.blocks.find((candidate) => candidate.id === id)
-  if (block === undefined || block.text.trim() === '') return
-  const text = block.text
+  const text = block?.text.trim() ?? ''
+  if (text === '') return
   const { isFilled } = await host.fill(text)
   if (!isFilled) {
     host.status(FILL_REFUSED_TEXT)
@@ -222,7 +226,9 @@ async function send(state: State, host: Host, id: number): Promise<void> {
 type Ui = Pick<Elements['terminal'], 'Box' | 'Button' | 'Text' | 'Input'>
 
 // No `hotkey` on a Button: a hotkey does not fire in a pane (measured in pull-request-pane,
-// two terminal setups). The arrow keys with Enter, or a click, press a Button.
+// two terminal setups). The arrow keys with Enter, or a click, press a Button. `plain` draws
+// the label alone, and the focus and the pointer still invert it, so the brackets of `[+]` are
+// the only chrome and the gutter keeps a fixed width.
 function blockRowOf(ui: Ui, block: Block, state: State, host: Host): RenderElement {
   const { Box, Button, Text, Input } = ui
   const key = `block:${block.id}`

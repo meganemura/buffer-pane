@@ -273,6 +273,15 @@ describe('the buffer', () => {
     expect(isSentOf(back, back.blocks[0]!)).toBe(false)
   })
 
+  test('a space typed at the end of a sent block keeps the mark, also after a load', () => {
+    const sent = afterSentOf(afterSubmitOf(emptyBuffer(), 'ship it'), 'ship it')
+    const spaced = afterEditOf(sent, 1, 'ship it ')
+
+    expect(isSentOf(spaced, spaced.blocks[0]!)).toBe(true)
+    const loaded = bufferFromStore(storedOf(spaced))
+    expect(isSentOf(loaded, loaded.blocks[0]!)).toBe(true)
+  })
+
   test('Enter in the field of an emptied block deletes the block', () => {
     const one = afterSubmitOf(emptyBuffer(), 'a')
 
