@@ -34,3 +34,12 @@ sentence on hover.
 - Text that is already in the prompt box is lost on `[+]`. The plugin cannot warn about it,
   because it cannot read the box.
 - Two blocks with the same text share one mark.
+
+## Note, 2026-09-19
+
+Asked for after the first real-terminal use: a second control, `[>]`, that sends the block as a
+prompt in one press. It calls `$.prompt.submit({ text })`, which runs the prompt when the
+session is idle, so a press during a turn queues it. A refusal by a hook (`drop`) shows on the
+status line, and the block gets no mark. `[+]` stays for a block that the person wants to read
+or change in the box first. The sentence "the plugin never submits a prompt" above holds for
+`[+]` only.

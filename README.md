@@ -11,9 +11,9 @@ interrupts the turn or puts the text in the queue. The pane is a place to
 collect that text until you are ready.
 
 - Write blocks of text in the pane while a turn runs.
-- Press `[+]` beside a block to put that block into the prompt box.
-- Read the prompt box, then press Enter yourself. The plugin never submits a
-  prompt.
+- Press `[+]` beside a block to put that block into the prompt box, read it,
+  then press Enter yourself.
+- Press `[>]` to send the block as a prompt in one press.
 - The buffer survives sessions. Each working directory has its own buffer.
 
 ## Requirements
@@ -50,20 +50,23 @@ To set `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` for each session, add it to the
 Type `/buffer-pane` to show the pane. Type it again to hide the pane.
 
 ```
-[+] [x]   rename the flag to --dry-run
-[+] [x] ✓ add a test for the empty list
-          the next thing to tell the agent
+[+] [>] [x]   rename the flag to --dry-run
+[+] [>] [x] ✓ add a test for the empty list
+              the next thing to tell the agent
 
-[+] replaces the prompt box with the block. [x] deletes the block.
+[+] replaces the prompt box with the block. [>] sends the block as a prompt. [x] deletes the block.
 ```
 
 - **Add a block.** Type in the last field and press Enter. The block goes
   above the field, and the field becomes empty for the next block.
 - **Edit a block.** Move the focus to the field of the block and type. The
   pane saves each change.
-- **Send a block.** Press `[+]`. The block goes into the prompt box and stays
-  in the pane with a `✓`. You can send the block again. An edit to the block
-  removes the `✓`.
+- **Put a block into the prompt box.** Press `[+]`. The block goes into the
+  prompt box and stays in the pane with a `✓`. You can send the block again.
+  An edit to the block removes the `✓`.
+- **Send a block as a prompt.** Press `[>]`. The block goes to the agent as
+  your next prompt. During a turn, it waits in the queue until the turn ends.
+  The block stays in the pane with a `✓`.
 - **Delete a block.** Press `[x]`. You can also make the field empty and press
   Enter.
 

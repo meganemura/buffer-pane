@@ -50,6 +50,7 @@ type WorldOptions = {
   // module's own in-memory state is gone, but a real store's persistence is not.
   store?: Record<string, unknown>
   isFilled?: boolean
+  drop?: string
 }
 
 // The world beneath the module: a working directory, a store, a prompt box that takes a fill
@@ -60,6 +61,7 @@ function world(on: On, options: WorldOptions = {}) {
   const closed: string[] = []
   const statuses: (string | undefined)[] = []
   const fills: string[] = []
+  const submits: string[] = []
   const reads: string[] = []
 
   on('session.start', ($, e) => ({ cwd: e.cwd }))
@@ -85,6 +87,11 @@ function world(on: On, options: WorldOptions = {}) {
     return { isFilled: options.isFilled ?? true }
   })
 
+  on('prompt.submit', ($, e) => {
+    submits.push(e.text)
+    return options.drop === undefined ? { text: e.text } : { drop: options.drop }
+  })
+
   const store = new Map<string, unknown>(Object.entries(options.store ?? {}))
   on('store.get', ($, e) => {
     reads.push(e.key)
@@ -95,7 +102,7 @@ function world(on: On, options: WorldOptions = {}) {
     return { value: undefined }
   })
 
-  return { cwd, opened, closed, statuses, fills, reads, store, session: { surface: 'terminal', isInteractive: true, cwd } as const }
+  return { cwd, opened, closed, statuses, fills, submits, reads, store, session: { surface: 'terminal', isInteractive: true, cwd } as const }
 }
 
 type Row = { key: string; mark: string; value: string }
@@ -111,10 +118,11 @@ function rowsOf(tree: unknown): Row[] {
     let mark = ''
     let value = ''
     for (const child of children) {
-      const type: unknown = Reflect.get(child, 'type')
-      if (type === 'Text') mark = (Reflect.get(child, 'children') as unknown[]).join('')
-      if (type === 'Input') value = String(Reflect.get(Reflect.get(child, 'props') as object, 'value'))
+      if (Reflect.get(child, 'type') === 'Text') mark = (Reflect.get(child, 'children') as unknown[]).join('')
     }
+    // The Input sits in its own Box (it takes the rest of the row), so it is searched for.
+    const input = inputsOf(children)[0]
+    if (input !== undefined) value = String(input['value'])
     return [{ key, mark, value }]
   }
   return rowsOf(children)
@@ -185,7 +193,7 @@ describe('the pane', () => {
     await $.session.start(kept.session)
     await $.ui.render(PANE)
 
-    await $.ui.press({ plugin: PLUGIN, key: 'block:2:send' })
+    await $.ui.press({ plugin: PLUGIN, key: 'block:2:fill' })
     await settle()
 
     expect(kept.fills).toEqual(['add a test for the empty list'])
@@ -201,11 +209,37 @@ describe('the pane', () => {
     await $.session.start(kept.session)
     await $.ui.render(PANE)
 
-    await $.ui.press({ plugin: PLUGIN, key: 'block:1:send' })
+    await $.ui.press({ plugin: PLUGIN, key: 'block:1:fill' })
     await settle()
 
     expect(kept.statuses).toHaveLength(1)
     expect(kept.statuses[0]).toContain('did not take the block')
+    expect(rowsOf(await $.ui.render(PANE)).map((row) => row.mark)).toEqual([' ', ' '])
+  })
+
+  test('a press on [>] submits that block as a prompt, and the block stays with a mark', async ($, on) => {
+    const kept = world(on, { store: { 'buffer:/work': SEED } })
+    await $.session.start(kept.session)
+    await $.ui.render(PANE)
+
+    await $.ui.press({ plugin: PLUGIN, key: 'block:1:submit' })
+    await settle()
+
+    expect(kept.submits).toEqual(['rename the flag to --dry-run'])
+    expect(kept.fills).toEqual([])
+    expect(rowsOf(await $.ui.render(PANE)).map((row) => row.mark)).toEqual(['✓', ' '])
+    expect(kept.store.get('buffer:/work')).toEqual({ ...SEED, sent: ['rename the flag to --dry-run'] })
+  })
+
+  test('when a hook refuses the prompt, a status line says why and no mark is drawn', async ($, on) => {
+    const kept = world(on, { store: { 'buffer:/work': SEED }, drop: 'not now' })
+    await $.session.start(kept.session)
+    await $.ui.render(PANE)
+
+    await $.ui.press({ plugin: PLUGIN, key: 'block:1:submit' })
+    await settle()
+
+    expect(kept.statuses).toEqual(['buffer-pane: the prompt was refused: not now'])
     expect(rowsOf(await $.ui.render(PANE)).map((row) => row.mark)).toEqual([' ', ' '])
   })
 

@@ -1,12 +1,12 @@
 // The plugin's one function-hooks module (the validator admits one per plugin). `/buffer-pane`
 // opens a pane beside the transcript that holds text the person writes for later: the next
 // things to tell the agent. The buffer is one text. Blank lines split it into blocks. Each
-// block has a `[+]` that writes the block into the prompt box and a `[x]` that deletes it. The
+// block has a `[+]` that writes the block into the prompt box, a `[>]` that submits the block as
+// a prompt, and a `[x]` that deletes it. The
 // buffer lives in the plugin store, one key for each working directory, so it survives sessions
 // and hot reloads.
 //
-// Must NOT know about: what the person does with the prompt box after a fill (this file never
-// submits a prompt; the person reads the box and presses Enter); what the prompt box holds
+// Must NOT know about: what the person does with the prompt box after a fill; what the prompt box holds
 // (the API cannot read it, and `prompt.fill` always replaces it); any other repository's
 // buffer (one key, the current working directory's).
 //
@@ -31,7 +31,8 @@ const SENT_MARK = '✓'
 const NOT_SENT_MARK = ' '
 
 const FILL_REFUSED_TEXT = 'buffer-pane: the prompt box did not take the block (a dialog is open, or there is no prompt box)'
-const REPLACE_NOTE = '[+] replaces the prompt box with the block. [x] deletes the block.'
+const SUBMIT_REFUSED_TEXT = 'buffer-pane: the prompt was refused: '
+const REPLACE_NOTE = '[+] replaces the prompt box with the block. [>] sends the block as a prompt. [x] deletes the block.'
 
 type Host = {
   cwd: () => Promise<string>
@@ -42,6 +43,7 @@ type Host = {
   log: (text: string) => void
   register: () => Promise<unknown>
   fill: (text: string) => Promise<{ isFilled: boolean }>
+  submit: (text: string) => Promise<{ drop?: string | undefined }>
   storeGet: (key: string) => Promise<unknown>
   storeSet: (key: string, value: unknown) => Promise<void>
 }
@@ -84,6 +86,7 @@ function hostOf($: any): Host {
     log: (text) => $.ui.log(text),
     register: () => $.command.register({ name: COMMAND, description: 'Show or hide the buffer-pane' }),
     fill: (text) => $.prompt.fill({ text }),
+    submit: (text) => $.prompt.submit({ text }),
     storeGet: (key) => $.store.get(key),
     storeSet: (key, value) => $.store.set(key, value),
   }
@@ -206,9 +209,14 @@ function commit(state: State, host: Host, buffer: Buffer): void {
   host.invalidate()
 }
 
-async function send(state: State, host: Host, id: number): Promise<void> {
+function blockTextOf(state: State, id: number): string {
   const block = state.buffer.blocks.find((candidate) => candidate.id === id)
-  const text = block?.text.trim() ?? ''
+  return block?.text.trim() ?? ''
+}
+
+// `[+]`: the block goes into the prompt box, and the person presses Enter.
+async function fill(state: State, host: Host, id: number): Promise<void> {
+  const text = blockTextOf(state, id)
   if (text === '') return
   const { isFilled } = await host.fill(text)
   if (!isFilled) {
@@ -218,6 +226,21 @@ async function send(state: State, host: Host, id: number): Promise<void> {
   host.status(undefined)
   // The block stays in the buffer. The pane is the source of truth: the person can lose the
   // text in the prompt box with one key, and then sends the same block again.
+  commit(state, host, afterSentOf(state.buffer, text))
+}
+
+// `[>]`: the block goes to the model as a prompt (asked for, beside `[+]`: a block that needs no
+// second look is sent in one press). `$.prompt.submit` runs the prompt when the session is idle,
+// so a press during a turn queues it. The mark is set only when the prompt entered.
+async function submit(state: State, host: Host, id: number): Promise<void> {
+  const text = blockTextOf(state, id)
+  if (text === '') return
+  const result = await host.submit(text)
+  if (result.drop !== undefined) {
+    host.status(`${SUBMIT_REFUSED_TEXT}${result.drop}`)
+    return
+  }
+  host.status(undefined)
   commit(state, host, afterSentOf(state.buffer, text))
 }
 
@@ -235,20 +258,29 @@ function blockRowOf(ui: Ui, block: Block, state: State, host: Host): RenderEleme
   return Box({
     key,
     flexDirection: 'row',
+    width: '100%',
     columnGap: 1,
     children: [
-      Button({ key: `${key}:send`, label: '[+]', plain: true, onPress: () => void send(state, host, block.id).catch(() => undefined) }),
+      Button({ key: `${key}:fill`, label: '[+]', plain: true, onPress: () => void fill(state, host, block.id).catch(() => undefined) }),
+      Button({ key: `${key}:submit`, label: '[>]', plain: true, onPress: () => void submit(state, host, block.id).catch(() => undefined) }),
       Button({ key: `${key}:remove`, label: '[x]', plain: true, onPress: () => commit(state, host, afterRemoveOf(state.buffer, block.id)) }),
       Text({ color: 'green', children: isSentOf(state.buffer, block) ? SENT_MARK : NOT_SENT_MARK }),
-      Input({
+      fieldBoxOf(ui, `${key}:field`, Input({
         key: `${key}:text`,
         value: block.text,
         submitLabel: 'save',
         onInput: (value) => commit(state, host, afterEditOf(state.buffer, block.id, value)),
         onSubmit: (value) => commit(state, host, afterEditSubmitOf(state.buffer, block.id, value)),
-      }),
+      })),
     ],
   })
+}
+
+// A field on its own draws as wide as its text (real-terminal feedback: the new-block field was
+// too narrow to write in). `InputProps` has no width, so the Box around it takes the rest of
+// the row and the field fills the Box.
+function fieldBoxOf(ui: Ui, key: string, field: RenderElement): RenderElement {
+  return ui.Box({ key, flexGrow: 1, width: '100%', children: [field] })
 }
 
 function draftRowOf(ui: Ui, state: State, host: Host): RenderElement {
@@ -256,10 +288,11 @@ function draftRowOf(ui: Ui, state: State, host: Host): RenderElement {
   return Box({
     key: 'draft',
     flexDirection: 'row',
-    // Lines the field up with the block fields: two 3-cell buttons, the mark, three gaps.
-    paddingLeft: 10,
+    width: '100%',
+    // Lines the field up with the block fields: three 3-cell buttons, the mark, four gaps.
+    paddingLeft: 14,
     children: [
-      Input({
+      fieldBoxOf(ui, 'draft:field', Input({
         key: `draft:${state.draftGeneration}`,
         value: state.buffer.draft,
         placeholder: 'the next thing to tell the agent',
@@ -270,7 +303,7 @@ function draftRowOf(ui: Ui, state: State, host: Host): RenderElement {
           state.draftGeneration += 1
           commit(state, host, afterSubmitOf(state.buffer, value))
         },
-      }),
+      })),
     ],
   })
 }
