@@ -1,6 +1,6 @@
 # 0003. One-line fields first, then a multi-line editor
 
-- Status: accepted
+- Status: accepted. The Milestone 2 plan below is superseded by 0009 (lines are Inputs).
 - Date: 2026-09-17
 
 ## Context

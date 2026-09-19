@@ -52,23 +52,25 @@ Type `/buffer-pane` to show the pane. Type it again to hide the pane.
 ```
 [+] [>] [x]   rename the flag to --dry-run
 [+] [>] [x] ✓ add a test for the empty list
+              and one for a list of one
               the next thing to tell the agent
 
-[+] replaces the prompt box with the block. [>] sends the block as a prompt. [x] deletes the block.
+[+] replaces the prompt box with the block. [>] sends the block as a prompt. [x] deletes the block. Enter adds a line; Enter on an empty line ends the block.
 ```
 
-- **Add a block.** Type in the last field and press Enter. The block goes
-  above the field, and the field becomes empty for the next block.
-- **Edit a block.** Move the focus to the field of the block and type. The
-  pane saves each change.
+- **Write a block.** Type in the last field. Press Enter to add a line to
+  the block; the focus moves to the new line. Press Enter on the empty last
+  line to end the block. A new empty field appears below for the next block.
+- **Edit a block.** Move the focus to a line of the block and type. The pane
+  saves each change. Enter on an empty line in the middle of a block removes
+  that line.
 - **Put a block into the prompt box.** Press `[+]`. The block goes into the
   prompt box and stays in the pane with a `✓`. You can send the block again.
   An edit to the block removes the `✓`.
 - **Send a block as a prompt.** Press `[>]`. The block goes to the agent as
   your next prompt and leaves the pane. During a turn, it waits in the queue
   until the turn ends.
-- **Delete a block.** Press `[x]`. You can also make the field empty and press
-  Enter.
+- **Delete a block.** Press `[x]`.
 
 To press a control, click it, or move the focus to it with the arrow keys and
 press Enter.
@@ -85,9 +87,10 @@ then shows a message, and the block gets no `✓`.
 
 ### Blocks
 
-The buffer is one text, and blank lines split it into blocks. In this
-version, one block is one line. A multi-line editor is the next milestone
-([decision 0003](docs/decisions/0003-one-line-fields-first-then-a-multi-line-editor.md)).
+The buffer is one text, and blank lines split it into blocks. A block has one
+or more lines, and each line is one field. A line wider than the field is cut
+with `…` on screen; the text is kept in full. Break long text into lines with
+Enter.
 
 ### Where the buffer lives
 
