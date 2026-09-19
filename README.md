@@ -50,11 +50,11 @@ To set `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` for each session, add it to the
 Type `/buffer-pane` to show the pane. Type it again to hide the pane.
 
 ```
-[+] [>] [x]   rename the flag to --dry-run
-[+] [>] [x] ✓ add a test for the empty list
-              the next thing to tell the agent
+[+] [>] [x] [^] [v]   rename the flag to --dry-run
+[+] [>] [x] [^] [v] ✓ add a test for the empty list
+                      the next thing to tell the agent
 
-[+] replaces the prompt box with the block. [>] sends the block as a prompt. [x] deletes the block.
+[+] replaces the prompt box with the block. [>] sends the block as a prompt. [x] deletes the block. [^] [v] move the block.
 ```
 
 - **Add a block.** Type in the last field and press Enter. The block goes
@@ -67,6 +67,8 @@ Type `/buffer-pane` to show the pane. Type it again to hide the pane.
 - **Send a block as a prompt.** Press `[>]`. The block goes to the agent as
   your next prompt and leaves the pane. During a turn, it waits in the queue
   until the turn ends.
+- **Move a block.** Press `[^]` to move it up one place, `[v]` to move it
+  down.
 - **Delete a block.** Press `[x]`. You can also make the field empty and press
   Enter.
 

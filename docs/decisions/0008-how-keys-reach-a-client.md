@@ -41,3 +41,11 @@ event it received. The person typed into it in a real terminal, with a Japanese 
 - The gutter (`[+]`, `[>]`, `[x]`, the mark) must be drawn inside the Client, because only the
   Client knows which screen row a block starts on after wrapping. How a press reaches the
   module from inside a Client is the next measurement.
+
+## Note, 2026-09-19, later
+
+In every run after the one above, in the same terminal and with the same probe, the `Client`
+received no key and no pointer event: the count stayed at 0, and each typed character went to
+the prompt box. This held with `onKey` alone, with `onPointer` alone, and with both. The cause
+was not found; the sessions wrote no debug log. So the `Client` editor and the drag to reorder
+blocks are dropped. Blocks move with `[^]` and `[v]` Buttons, and the one-line blocks stay.

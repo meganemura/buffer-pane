@@ -32,7 +32,7 @@ const NOT_SENT_MARK = ' '
 
 const FILL_REFUSED_TEXT = 'buffer-pane: the prompt box did not take the block (a dialog is open, or there is no prompt box)'
 const SUBMIT_REFUSED_TEXT = 'buffer-pane: the prompt was refused: '
-const REPLACE_NOTE = '[+] replaces the prompt box with the block. [>] sends the block as a prompt. [x] deletes the block.'
+const REPLACE_NOTE = '[+] replaces the prompt box with the block. [>] sends the block as a prompt. [x] deletes the block. [^] [v] move the block.'
 
 type Host = {
   cwd: () => Promise<string>
@@ -146,6 +146,19 @@ export function afterEditOf(buffer: Buffer, id: number, value: string): Buffer {
 export function afterEditSubmitOf(buffer: Buffer, id: number, value: string): Buffer {
   if (value.trim() === '') return afterRemoveOf(buffer, id)
   return afterEditOf(buffer, id, value.trim())
+}
+
+// Moves a block one place up (`-1`) or down (`+1`). A block at the end stays where it is.
+// Buttons in place of a drag: a drag needs pointer events, which only a `Client` receives,
+// and keys and pointer events did not reach a `Client` in a repeatable way (docs/decisions/0008).
+export function afterMoveOf(buffer: Buffer, id: number, direction: -1 | 1): Buffer {
+  const index = buffer.blocks.findIndex((block) => block.id === id)
+  const target = index + direction
+  if (index < 0 || target < 0 || target >= buffer.blocks.length) return buffer
+  const blocks = [...buffer.blocks]
+  const [moved] = blocks.splice(index, 1)
+  blocks.splice(target, 0, moved!)
+  return { ...buffer, blocks }
 }
 
 export function afterRemoveOf(buffer: Buffer, id: number): Buffer {
@@ -266,6 +279,9 @@ function blockRowOf(ui: Ui, block: Block, state: State, host: Host): RenderEleme
       Button({ key: `${key}:fill`, label: '[+]', plain: true, onPress: () => void fill(state, host, block.id).catch(() => undefined) }),
       Button({ key: `${key}:submit`, label: '[>]', plain: true, onPress: () => void submit(state, host, block.id).catch(() => undefined) }),
       Button({ key: `${key}:remove`, label: '[x]', plain: true, onPress: () => commit(state, host, afterRemoveOf(state.buffer, block.id)) }),
+      // `^` and `v` are ASCII: no font draws them wider than one cell (an arrow glyph can).
+      Button({ key: `${key}:up`, label: '[^]', plain: true, onPress: () => commit(state, host, afterMoveOf(state.buffer, block.id, -1)) }),
+      Button({ key: `${key}:down`, label: '[v]', plain: true, onPress: () => commit(state, host, afterMoveOf(state.buffer, block.id, 1)) }),
       Text({ color: 'green', children: isSentOf(state.buffer, block) ? SENT_MARK : NOT_SENT_MARK }),
       fieldBoxOf(ui, `${key}:field`, Input({
         key: `${key}:text`,
@@ -291,8 +307,8 @@ function draftRowOf(ui: Ui, state: State, host: Host): RenderElement {
     key: 'draft',
     flexDirection: 'row',
     width: '100%',
-    // Lines the field up with the block fields: three 3-cell buttons, the mark, four gaps.
-    paddingLeft: 14,
+    // Lines the field up with the block fields: five 3-cell buttons, the mark, six gaps.
+    paddingLeft: 22,
     children: [
       fieldBoxOf(ui, 'draft:field', Input({
         key: `draft:${state.draftGeneration}`,

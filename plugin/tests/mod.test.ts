@@ -18,6 +18,7 @@ import {
   afterDraftOf,
   afterEditOf,
   afterEditSubmitOf,
+  afterMoveOf,
   afterRemoveOf,
   afterSentOf,
   afterSubmitOf,
@@ -243,6 +244,25 @@ describe('the pane', () => {
     expect(rowsOf(await $.ui.render(PANE)).map((row) => row.key)).toEqual(['block:1', 'block:2'])
   })
 
+  test('a press on [v] moves the block down, and [^] moves it back up; the ends stay', async ($, on) => {
+    const kept = world(on, { store: { 'buffer:/work': SEED } })
+    await $.session.start(kept.session)
+    await $.ui.render(PANE)
+
+    await $.ui.press({ plugin: PLUGIN, key: 'block:1:down' })
+    await settle()
+    expect(rowsOf(await $.ui.render(PANE)).map((row) => row.key)).toEqual(['block:2', 'block:1'])
+    expect(kept.store.get('buffer:/work')).toEqual({ text: 'add a test for the empty list\n\nrename the flag to --dry-run', sent: [], draft: '' })
+
+    await $.ui.press({ plugin: PLUGIN, key: 'block:1:down' })
+    await settle()
+    expect(rowsOf(await $.ui.render(PANE)).map((row) => row.key)).toEqual(['block:2', 'block:1'])
+
+    await $.ui.press({ plugin: PLUGIN, key: 'block:1:up' })
+    await settle()
+    expect(rowsOf(await $.ui.render(PANE)).map((row) => row.key)).toEqual(['block:1', 'block:2'])
+  })
+
   test('a press on [x] deletes that block and writes the store', async ($, on) => {
     const kept = world(on, { store: { 'buffer:/work': SEED } })
     await $.session.start(kept.session)
@@ -314,6 +334,15 @@ describe('the buffer', () => {
     expect(isSentOf(spaced, spaced.blocks[0]!)).toBe(true)
     const loaded = bufferFromStore(storedOf(spaced))
     expect(isSentOf(loaded, loaded.blocks[0]!)).toBe(true)
+  })
+
+  test('a move keeps the ids and the sent marks', () => {
+    const two = afterSentOf(afterSubmitOf(afterSubmitOf(emptyBuffer(), 'a'), 'b'), 'b')
+    const moved = afterMoveOf(two, 2, -1)
+
+    expect(moved.blocks).toEqual([{ id: 2, text: 'b' }, { id: 1, text: 'a' }])
+    expect(isSentOf(moved, moved.blocks[0]!)).toBe(true)
+    expect(afterMoveOf(moved, 2, -1)).toEqual(moved)
   })
 
   test('Enter in the field of an emptied block deletes the block', () => {
