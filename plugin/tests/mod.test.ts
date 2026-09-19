@@ -217,7 +217,7 @@ describe('the pane', () => {
     expect(rowsOf(await $.ui.render(PANE)).map((row) => row.mark)).toEqual([' ', ' '])
   })
 
-  test('a press on [>] submits that block as a prompt, and the block stays with a mark', async ($, on) => {
+  test('a press on [>] submits that block as a prompt and deletes it', async ($, on) => {
     const kept = world(on, { store: { 'buffer:/work': SEED } })
     await $.session.start(kept.session)
     await $.ui.render(PANE)
@@ -227,11 +227,11 @@ describe('the pane', () => {
 
     expect(kept.submits).toEqual(['rename the flag to --dry-run'])
     expect(kept.fills).toEqual([])
-    expect(rowsOf(await $.ui.render(PANE)).map((row) => row.mark)).toEqual(['✓', ' '])
-    expect(kept.store.get('buffer:/work')).toEqual({ ...SEED, sent: ['rename the flag to --dry-run'] })
+    expect(rowsOf(await $.ui.render(PANE))).toEqual([{ key: 'block:2', mark: ' ', value: 'add a test for the empty list' }])
+    expect(kept.store.get('buffer:/work')).toEqual({ text: 'add a test for the empty list', sent: [], draft: '' })
   })
 
-  test('when a hook refuses the prompt, a status line says why and no mark is drawn', async ($, on) => {
+  test('when a hook refuses the prompt, a status line says why and the block stays', async ($, on) => {
     const kept = world(on, { store: { 'buffer:/work': SEED }, drop: 'not now' })
     await $.session.start(kept.session)
     await $.ui.render(PANE)
@@ -240,7 +240,7 @@ describe('the pane', () => {
     await settle()
 
     expect(kept.statuses).toEqual(['buffer-pane: the prompt was refused: not now'])
-    expect(rowsOf(await $.ui.render(PANE)).map((row) => row.mark)).toEqual([' ', ' '])
+    expect(rowsOf(await $.ui.render(PANE)).map((row) => row.key)).toEqual(['block:1', 'block:2'])
   })
 
   test('a press on [x] deletes that block and writes the store', async ($, on) => {

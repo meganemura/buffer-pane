@@ -40,6 +40,8 @@ sentence on hover.
 Asked for after the first real-terminal use: a second control, `[>]`, that sends the block as a
 prompt in one press. It calls `$.prompt.submit({ text })`, which runs the prompt when the
 session is idle, so a press during a turn queues it. A refusal by a hook (`drop`) shows on the
-status line, and the block gets no mark. `[+]` stays for a block that the person wants to read
-or change in the box first. The sentence "the plugin never submits a prompt" above holds for
+status line, and the block stays. When the prompt entered, the block is deleted: a sent request
+is done, and a block that stayed read as one still to send (real-terminal feedback). `[+]`
+keeps the block with a mark, because the text in the box can still be lost or changed. `[+]`
+stays for a block that the person wants to read or change in the box first. The sentence "the plugin never submits a prompt" above holds for
 `[+]` only.

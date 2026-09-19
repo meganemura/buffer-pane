@@ -2,7 +2,7 @@
 // opens a pane beside the transcript that holds text the person writes for later: the next
 // things to tell the agent. The buffer is one text. Blank lines split it into blocks. Each
 // block has a `[+]` that writes the block into the prompt box, a `[>]` that submits the block as
-// a prompt, and a `[x]` that deletes it. The
+// a prompt and deletes it, and a `[x]` that deletes it. The
 // buffer lives in the plugin store, one key for each working directory, so it survives sessions
 // and hot reloads.
 //
@@ -231,7 +231,9 @@ async function fill(state: State, host: Host, id: number): Promise<void> {
 
 // `[>]`: the block goes to the model as a prompt (asked for, beside `[+]`: a block that needs no
 // second look is sent in one press). `$.prompt.submit` runs the prompt when the session is idle,
-// so a press during a turn queues it. The mark is set only when the prompt entered.
+// so a press during a turn queues it. The block is deleted once the prompt entered (asked for:
+// a sent request is done, and a block that stays reads as one still to send). A refused prompt
+// leaves the block in place.
 async function submit(state: State, host: Host, id: number): Promise<void> {
   const text = blockTextOf(state, id)
   if (text === '') return
@@ -241,7 +243,7 @@ async function submit(state: State, host: Host, id: number): Promise<void> {
     return
   }
   host.status(undefined)
-  commit(state, host, afterSentOf(state.buffer, text))
+  commit(state, host, afterRemoveOf(state.buffer, id))
 }
 
 // The real element types, so the typecheck refuses a prop the engine would refuse. One

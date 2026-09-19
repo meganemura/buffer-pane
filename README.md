@@ -65,8 +65,8 @@ Type `/buffer-pane` to show the pane. Type it again to hide the pane.
   prompt box and stays in the pane with a `✓`. You can send the block again.
   An edit to the block removes the `✓`.
 - **Send a block as a prompt.** Press `[>]`. The block goes to the agent as
-  your next prompt. During a turn, it waits in the queue until the turn ends.
-  The block stays in the pane with a `✓`.
+  your next prompt and leaves the pane. During a turn, it waits in the queue
+  until the turn ends.
 - **Delete a block.** Press `[x]`. You can also make the field empty and press
   Enter.
 
