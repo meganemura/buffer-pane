@@ -32,7 +32,13 @@ const NOT_SENT_MARK = ' '
 
 const FILL_REFUSED_TEXT = 'buffer-pane: the prompt box did not take the block (a dialog is open, or there is no prompt box)'
 const SUBMIT_REFUSED_TEXT = 'buffer-pane: the prompt was refused: '
-const REPLACE_NOTE = '[+] replaces the prompt box with the block. [>] sends the block as a prompt. [x] deletes the block. [^] [v] move the block.'
+// The surface draws `⏎ <submitLabel>` beside a field while it has the focus, and the field
+// shrinks by that width, so the row moved on each focus change (real-terminal feedback). An
+// empty label is the one value the props offer to give it nothing to draw. What Enter does is
+// in the note at the bottom of the pane instead.
+const SUBMIT_LABEL = ''
+
+const REPLACE_NOTE = '[+] replaces the prompt box with the block. [>] sends the block as a prompt. [x] deletes the block. [^] [v] move the block. Enter in the last field adds a block.'
 
 type Host = {
   cwd: () => Promise<string>
@@ -286,7 +292,7 @@ function blockRowOf(ui: Ui, block: Block, state: State, host: Host): RenderEleme
       fieldBoxOf(ui, `${key}:field`, Input({
         key: `${key}:text`,
         value: block.text,
-        submitLabel: 'save',
+        submitLabel: SUBMIT_LABEL,
         onInput: (value) => commit(state, host, afterEditOf(state.buffer, block.id, value)),
         onSubmit: (value) => commit(state, host, afterEditSubmitOf(state.buffer, block.id, value)),
       })),
@@ -314,7 +320,7 @@ function draftRowOf(ui: Ui, state: State, host: Host): RenderElement {
         key: `draft:${state.draftGeneration}`,
         value: state.buffer.draft,
         placeholder: 'the next thing to tell the agent',
-        submitLabel: 'add block',
+        submitLabel: SUBMIT_LABEL,
         autoFocus: true,
         onInput: (value) => commit(state, host, afterDraftOf(state.buffer, value)),
         onSubmit: (value) => {

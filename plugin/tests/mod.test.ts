@@ -186,7 +186,7 @@ describe('the pane', () => {
 
     const inputs = inputsOf(await $.ui.render(PANE))
 
-    expect(inputs.at(-1)).toEqual({ key: 'draft:0', value: 'half a thou', placeholder: 'the next thing to tell the agent', submitLabel: 'add block', autoFocus: true })
+    expect(inputs.at(-1)).toEqual({ key: 'draft:0', value: 'half a thou', placeholder: 'the next thing to tell the agent', submitLabel: '', autoFocus: true })
   })
 
   test('a press on [+] fills the prompt box with that block, and the block stays with a mark', async ($, on) => {
