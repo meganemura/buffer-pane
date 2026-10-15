@@ -25,6 +25,7 @@ import {
   blockTextsOf,
   bufferFromStore,
   emptyBuffer,
+  fillRefusedTextOf,
   isSentOf,
   storedOf,
   storeKeyOf,
@@ -70,7 +71,7 @@ function world(on: On, options: WorldOptions = {}) {
   on('session.cwd', () => ({ value: cwd }))
   on('ui.open', ($, e) => {
     opened.push(e.id)
-    return { value: undefined }
+    return { value: { isPlaced: true } }
   })
   on('ui.close', ($, e) => {
     closed.push(e.id)
@@ -103,7 +104,18 @@ function world(on: On, options: WorldOptions = {}) {
     return { value: undefined }
   })
 
-  return { cwd, opened, closed, statuses, fills, submits, reads, store, session: { surface: 'terminal', isInteractive: true, cwd } as const }
+  return {
+    cwd,
+    opened,
+    closed,
+    statuses,
+    fills,
+    submits,
+    reads,
+    store,
+    session: { surface: 'terminal', isInteractive: true, cwd } as const,
+    desktopSession: { surface: 'desktop', isInteractive: true, cwd } as const,
+  }
 }
 
 type Row = { key: string; mark: string; value: string }
@@ -367,5 +379,47 @@ describe('the buffer', () => {
     expect(bufferFromStore(undefined)).toEqual(emptyBuffer())
     expect(bufferFromStore({ blocks: ['old shape'] })).toEqual(emptyBuffer())
     expect(bufferFromStore({ text: 'kept', sent: 'not a list', draft: 7 })).toEqual({ blocks: [{ id: 1, text: 'kept' }], sent: [], draft: '', nextId: 2 })
+  })
+})
+
+// Claude Code Desktop draws the pane too. The same buffer, driven on the desktop surface, must
+// draw the same tree and act the same as on the terminal.
+const DESKTOP_PANE: RenderInput<'Pane'> = { ...PANE, surface: 'desktop' }
+
+// A drawn tree as JSON, less each element's `press` handle: the engine numbers handles per
+// render, so two renders of one tree differ there and nowhere else.
+function shapeOf(tree: unknown): string {
+  return JSON.stringify(tree, (key, value: unknown) => (key === 'press' ? undefined : value))
+}
+
+describe('the pane on the desktop surface', () => {
+  test('the desktop draws the same tree as the terminal', async ($, on) => {
+    const kept = world(on, { store: { 'buffer:/work': SEED } })
+    await $.session.start(kept.desktopSession)
+
+    const terminal = await $.ui.render(PANE)
+    const desktop = await $.ui.render(DESKTOP_PANE)
+    expect(rowsOf(desktop).map((row) => row.key)).toEqual(['block:1', 'block:2'])
+    expect(shapeOf(desktop)).toBe(shapeOf(terminal))
+  })
+
+  test('a press on [>] on the desktop submits that block as a prompt and deletes it', async ($, on) => {
+    const kept = world(on, { store: { 'buffer:/work': SEED } })
+    await $.session.start(kept.desktopSession)
+    await $.ui.render(DESKTOP_PANE)
+
+    await $.ui.press({ plugin: PLUGIN, key: 'block:1:submit' })
+    await settle()
+
+    expect(kept.submits).toEqual(['rename the flag to --dry-run'])
+    expect(rowsOf(await $.ui.render(DESKTOP_PANE))).toEqual([{ key: 'block:2', mark: ' ', value: 'add a test for the empty list' }])
+  })
+
+  // The kit strips a `refusal` that a hook answers (only the engine's own reaches the plugin), so
+  // the choice of text is tested as the plain function `fill` calls.
+  test('a fill with no prompt box to take it points at [>]; any other refusal keeps the old text', () => {
+    expect(fillRefusedTextOf('no_composer')).toContain('Press [>] to send the block')
+    expect(fillRefusedTextOf('dialog')).toContain('did not take the block')
+    expect(fillRefusedTextOf(undefined)).toContain('did not take the block')
   })
 })

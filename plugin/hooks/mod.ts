@@ -31,6 +31,10 @@ const SENT_MARK = '✓'
 const NOT_SENT_MARK = ' '
 
 const FILL_REFUSED_TEXT = 'buffer-pane: the prompt box did not take the block (a dialog is open, or there is no prompt box)'
+// A session whose surface draws its own prompt box (Claude Code Desktop can be one) answers a
+// fill with the refusal `no_composer`. No later press can fill that box, so the status names
+// `[>]`, the other way to send a block.
+const NO_COMPOSER_TEXT = 'buffer-pane: this prompt box does not take text from a plugin. Press [>] to send the block as a prompt.'
 const SUBMIT_REFUSED_TEXT = 'buffer-pane: the prompt was refused: '
 // The surface draws `⏎ <submitLabel>` beside a field while it has the focus, and the field
 // shrinks by that width, so the row moved on each focus change (real-terminal feedback). An
@@ -48,7 +52,8 @@ type Host = {
   invalidate: () => void
   log: (text: string) => void
   register: () => Promise<unknown>
-  fill: (text: string) => Promise<{ isFilled: boolean }>
+  // `refusal` is the engine's cause when it refused the fill itself; absent when a hook did.
+  fill: (text: string) => Promise<{ isFilled: boolean; refusal?: string }>
   submit: (text: string) => Promise<{ drop?: string | undefined }>
   storeGet: (key: string) => Promise<unknown>
   storeSet: (key: string, value: unknown) => Promise<void>
@@ -233,13 +238,18 @@ function blockTextOf(state: State, id: number): string {
   return block?.text.trim() ?? ''
 }
 
+// The status line for a fill the prompt box did not take, by the engine's cause.
+export function fillRefusedTextOf(refusal: string | undefined): string {
+  return refusal === 'no_composer' ? NO_COMPOSER_TEXT : FILL_REFUSED_TEXT
+}
+
 // `[+]`: the block goes into the prompt box, and the person presses Enter.
 async function fill(state: State, host: Host, id: number): Promise<void> {
   const text = blockTextOf(state, id)
   if (text === '') return
-  const { isFilled } = await host.fill(text)
+  const { isFilled, refusal } = await host.fill(text)
   if (!isFilled) {
-    host.status(FILL_REFUSED_TEXT)
+    host.status(fillRefusedTextOf(refusal))
     return
   }
   host.status(undefined)
@@ -267,7 +277,10 @@ async function submit(state: State, host: Host, id: number): Promise<void> {
 
 // The real element types, so the typecheck refuses a prop the engine would refuse. One
 // unknown prop drops the whole tree with no message. `Text` takes no `key`.
-type Ui = Pick<Elements['terminal'], 'Box' | 'Button' | 'Text' | 'Input'>
+// The pane draws on the terminal and on Claude Code Desktop, so `Ui` holds only what both
+// tables declare. Other surfaces go to `next(e)`.
+type DrawnSurface = 'terminal' | 'desktop'
+type Ui = Pick<Elements[DrawnSurface], 'Box' | 'Button' | 'Text' | 'Input'>
 
 // No `hotkey` on a Button: a hotkey does not fire in a pane (measured in pull-request-pane,
 // two terminal setups). The arrow keys with Enter, or a click, press a Button. `plain` draws
@@ -378,7 +391,7 @@ export function register(on: On) {
 
   on('ui.render', { component: 'Pane' }, async ($, e, next) => {
     if (e.requestId !== PANE_ID || state.host === null) return next(e)
-    if (e.surface !== 'terminal') return next(e)
+    if (e.surface !== 'terminal' && e.surface !== 'desktop') return next(e)
     const { Box, Button, Text, Input } = await $.ui.resolve(e)
     return paneOf({ Box, Button, Text, Input }, state, state.host)
   })
