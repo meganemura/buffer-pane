@@ -19,6 +19,8 @@ The repository is private today. The layer is public-possible: commit
 messages, comments, README and docs are in English. Follow ASD-STE100
 Simplified Technical English. Never commit a real buffer's content as a
 fixture; tests use invented text.
+`README.ja.md` is the Japanese translation of `README.md`, and the two
+change in the same commit.
 
 ## Rules
 

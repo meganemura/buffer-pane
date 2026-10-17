@@ -125,3 +125,7 @@ changes to this repository.
 
 Early access. The function-hooks API can change between Claude Code releases
 without notice.
+
+---
+
+[Japanese](README.ja.md)
