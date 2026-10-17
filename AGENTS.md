@@ -5,7 +5,7 @@ Context for agents that work in this repository.
 ## What this is
 
 buffer-pane, a Claude Code plugin whose behavior lives in one hooks module
-(a "Claude Mod"). `/buffer-pane` opens a pane beside the transcript that
+(a mod). `/buffer-pane` opens a pane beside the transcript that
 holds text the person writes for later: the next things to tell the agent.
 The text is split into blocks. A `[+]` control in the gutter beside a block
 writes that block into the prompt box. The buffer survives sessions.
@@ -22,8 +22,10 @@ fixture; tests use invented text.
 
 ## Rules
 
-- Function hooks are early access. The module loads only where
-  `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` is set. The API can change between
+- Mods are early access. Claude Code 2.1.287 and later load them by
+  default; CI pins 2.1.280, where the module loads only with
+  `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`, so the CI and test commands set
+  it. The API can change between
   releases. The types come from `/plugin-types`, which writes
   `.claude/types/claude-code.d.ts` at the repository root; that directory is
   gitignored, so run `/plugin-types` once in a new checkout.
@@ -43,8 +45,8 @@ fixture; tests use invented text.
   is tested as a plain function with a hand-rolled surface double.
 - Quality gates: `claude plugin validate plugin`, `npx -p typescript tsc -p
   plugin/hooks`, and the plugin tests. Run all three before a commit.
-- Development loop: `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude --plugin-dir
-  "$PWD/plugin"` in a real terminal. `-p` has no pane surface. Hook failures
+- Development loop: `claude --plugin-dir "$PWD/plugin"` in a real
+  terminal. `-p` has no pane surface. Hook failures
   are fail-open and appear only in `~/.claude/debug/<session>.txt`.
 - Design decisions go to `docs/decisions/` as short numbered notes
   (Context / Decision / Consequences).
